@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Laundry & Dish Quest v2.0</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><rect x='14' y='14' width='72' height='72' rx='12' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='50' cy='54' r='22' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='30' cy='26' r='4' fill='%2310b981'/><circle cx='42' cy='26' r='4' fill='%2338bdf8'/></svg>" />
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #151f32;
+      --card-alt: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.2);
+      --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.14);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.14);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.15);
+      --purple: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 60px;
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.45;
+    }
+
+    /* Header & XP Bar */
+    .header-card {
+      background: linear-gradient(145deg, #162238, #0f172a);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .lvl-badge {
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .xp-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .xp-bar-bg {
+      height: 10px;
+      background: #090e1a;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #26334d;
+    }
+
+    .xp-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.35s ease;
+    }
+
+    /* Lifetime Odometer Vault */
+    .vault-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .vault-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .vault-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .vault-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .odometer-box {
+      background: var(--bg);
+      border: 1px solid #26334d;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .odo-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .odo-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .odo-controls {
+      display: flex;
+      gap: 4px;
+      margin-left: 6px;
+    }
+
+    .mini-btn {
+      background: var(--card-alt);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 24px;
+      height: 24px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .commit-btn {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid var(--green);
+      background: var(--green-bg);
+      color: #34d399;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .commit-btn:disabled {
+      opacity: 0.45;
+      border-color: var(--border);
+      background: var(--card-alt);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    /* Controls & Schedule Config */
+    .config-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .config-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .input-group input[type="time"],
+    .input-group input[type="number"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .mode-toggle {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 12px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 8px 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .mode-btn.active {
+      background: var(--card-alt);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .counter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .counter-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .counter-box span {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .step-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-alt);
+      color: var(--text);
+      font-size: 1.2rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .step-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      min-width: 24px;
+    }
+
+    /* Warning Banner */
+    .cutoff-banner {
+      display: none;
+      background: var(--red-bg);
+      border: 1px solid var(--red);
+      color: #fca5a5;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0 8px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 0.3px;
+    }
+
+    .recal-all-btn {
+      background: var(--card-alt);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Load Cards */
+    .quest-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quest-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      transition: all 0.2s;
+    }
+
+    .quest-card.past-cutoff {
+      border-color: var(--red);
+      background: linear-gradient(145deg, #1f1624, #151f32);
+    }
+
+    .quest-card.done-draft {
+      border-color: var(--amber);
+      background: var(--amber-bg);
+    }
+
+    .quest-card.done-verified {
+      border-color: var(--green);
+      background: var(--green-bg);
+    }
+
+    .quest-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .check-label input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .quest-name {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .xp-pill {
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .quest-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .time-window {
+      font-weight: 700;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cutoff-tag {
+      background: var(--red-bg);
+      color: #fca5a5;
+      border: 1px solid var(--red);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .chip-btn.start-now {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .chip-btn.verify-chip {
+      border-color: var(--amber);
+      background: rgba(245, 158, 11, 0.2);
+      color: #fcd34d;
+    }
+
+    .verified-stamp {
+      color: #34d399;
+      font-size: 0.75rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dur-select {
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .footer-actions {
+      margin-top: 22px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .reset-btn {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 10px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header & XP -->
+  <div class="header-card">
+    <div class="title-row">
+      <h1>⚡ QUEST TRACKER v2.0</h1>
+      <span class="lvl-badge" id="lvlBadge">LVL 1</span>
+    </div>
+    <div class="xp-meta">
+      <span id="rankText">Rank: Initiate Operator</span>
+      <span id="xpText">0 / 500 XP</span>
+    </div>
+    <div class="xp-bar-bg">
+      <div class="xp-bar-fill" id="xpFill"></div>
+    </div>
+  </div>
+
+  <!-- Verified Lifetime Odometer -->
+  <div class="vault-card">
+    <div class="vault-header">
+      <span class="vault-title">🛡️ Verified Lifetime Totals (Anti-Test Guard)</span>
+    </div>
+    <div class="vault-grid">
+      <div class="odometer-box">
+        <div>
+          <div class="odo-label">👕 Laundry</div>
+          <div class="odo-val" id="lifeLaundry">0</div>
+        </div>
+        <div class="odo-controls">
+          <button class="mini-btn" onclick="adjustLifetime('laundry', -1)" title="Subtract 1">−</button>
+          <button class="mini-btn" onclick="adjustLifetime('laundry', 1)" title="Add 1">+</button>
+        </div>
+      </div>
+      <div class="odometer-box">
+        <div>
+          <div class="odo-label">🍽️ Dishes</div>
+          <div class="odo-val" id="lifeDishes">0</div>
+        </div>
+        <div class="odo-controls">
+          <button class="mini-btn" onclick="adjustLifetime('dishes', -1)" title="Subtract 1">−</button>
+          <button class="mini-btn" onclick="adjustLifetime('dishes', 1)" title="Add 1">+</button>
+        </div>
+      </div>
+    </div>
+    <button class="commit-btn" id="commitAllBtn" onclick="verifyAllChecked()" disabled>
+      ✓ Lock & Verify 0 Checked Loads into Lifetime Total
+    </button>
+  </div>
+
+  <!-- Schedule & Load Calculator -->
+  <div class="config-card">
+    <div class="config-row">
+      <div class="input-group">
+        <label>Start Time</label>
+        <input type="time" id="startTimeInput" value="10:30" onchange="updateConfig()" />
+      </div>
+      <div class="input-group">
+        <label>Cutoff Time</label>
+        <input type="time" id="cutoffTimeInput" value="02:00" onchange="updateConfig()" />
+      </div>
+    </div>
+
+    <div class="config-row">
+      <div class="input-group">
+        <label>Transition Buffer (Mins)</label>
+        <input type="number" id="bufferInput" value="10" min="0" max="120" step="5" onchange="updateConfig()" />
+      </div>
+      <div class="input-group">
+        <label>Default Cycle (Mins)</label>
+        <input type="number" id="defaultDurInput" value="180" min="30" max="360" step="15" onchange="updateConfig()" />
+      </div>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeSeq" onclick="setQueueMode('sequential')">
+        Sequential (1 Machine at a Time)
+      </button>
+      <button class="mode-btn" id="modePar" onclick="setQueueMode('parallel')">
+        Parallel (Run Both Together)
+      </button>
+    </div>
+
+    <div class="counter-grid">
+      <div class="counter-box">
+        <span>👕 LAUNDRY LOADS</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="changeCount('laundry', -1)">−</button>
+          <div class="step-val" id="laundryCountVal">5</div>
+          <button class="step-btn" onclick="changeCount('laundry', 1)">+</button>
+        </div>
+      </div>
+      <div class="counter-box">
+        <span>🍽️ DISH LOADS</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="changeCount('dishes', -1)">−</button>
+          <div class="step-val" id="dishCountVal">1</div>
+          <button class="step-btn" onclick="changeCount('dishes', 1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cutoff Warning Banner -->
+  <div class="cutoff-banner" id="cutoffBanner"></div>
+
+  <!-- Dynamic Queue Section -->
+  <div class="section-header">
+    <span class="section-title">📅 TODAY'S ACTIVE QUEUE</span>
+    <button class="recal-all-btn" onclick="snapStartToNow()">⏱️ Set Start = Now</button>
+  </div>
+
+  <div class="quest-list" id="questList"></div>
+
+  <!-- Bonus Quests -->
+  <div class="section-header">
+    <span class="section-title">🪵 BONUS CARE</span>
+  </div>
+  <div class="quest-card" id="boardCard">
+    <div class="quest-top">
+      <label class="check-label">
+        <input type="checkbox" id="boardCheck" onchange="toggleBoard()" />
+        <span class="quest-name">Hand-Wash Wooden Cutting Board</span>
+      </label>
+      <span class="xp-pill">+50 XP</span>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button class="reset-btn" onclick="resetDailySession()">🔄 New Day (Keep Lifetime Totals)</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'laundry_dish_quest_v2';
+
+    let state = {
+      startTime: '10:30',
+      cutoffTime: '02:00',
+      bufferMins: 10,
+      defaultDurMins: 180,
+      queueMode: 'sequential', // 'sequential' or 'parallel'
+      laundryCount: 5,
+      dishCount: 1,
+      boardDone: false,
+      lifetimeLaundry: 0,
+      lifetimeDishes: 0,
+      // Per-item overrides & status keyed by id ('L1', 'D1', etc.)
+      items: {}
+    };
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          state = { ...state, ...JSON.parse(saved) };
+        } catch (e) {}
+      }
+      document.getElementById('startTimeInput').value = state.startTime;
+      document.getElementById('cutoffTimeInput').value = state.cutoffTime;
+      document.getElementById('bufferInput').value = state.bufferMins;
+      document.getElementById('defaultDurInput').value = state.defaultDurMins;
+      document.getElementById('boardCheck').checked = !!state.boardDone;
+      renderAll();
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function timeStrToMins(str) {
+      const [h, m] = str.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function minsToTimeStr(totalMins) {
+      const wrapped = ((totalMins % 1440) + 1440) % 1440;
+      const h24 = Math.floor(wrapped / 60);
+      const m = wrapped % 60;
+      const ampm = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    }
+
+    function getCutoffTimelineMins(startMins, cutoffStr) {
+      let cMins = timeStrToMins(cutoffStr);
+      if (cMins <= startMins) {
+        cMins += 1440; // Cutoff is after midnight
+      }
+      return cMins;
+    }
+
+    function ensureItem(id) {
+      if (!state.items[id]) {
+        state.items[id] = {
+          checked: false,
+          verified: false,
+          customDurMins: null,
+          anchorStartMins: null
+        };
+      }
+      return state.items[id];
+    }
+
+    function updateConfig() {
+      state.startTime = document.getElementById('startTimeInput').value || '10:30';
+      state.cutoffTime = document.getElementById('cutoffTimeInput').value || '02:00';
+      state.bufferMins = Math.max(0, parseInt(document.getElementById('bufferInput').value) || 0);
+      state.defaultDurMins = Math.max(15, parseInt(document.getElementById('defaultDurInput').value) || 180);
+      saveState();
+      renderAll();
+    }
+
+    function setQueueMode(mode) {
+      state.queueMode = mode;
+      saveState();
+      renderAll();
+    }
+
+    function changeCount(type, delta) {
+      if (type === 'laundry') {
+        state.laundryCount = Math.max(0, Math.min(12, state.laundryCount + delta));
+      } else {
+        state.dishCount = Math.max(0, Math.min(8, state.dishCount + delta));
+      }
+      saveState();
+      renderAll();
+    }
+
+    function snapStartToNow() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      state.startTime = `${hh}:${mm}`;
+      document.getElementById('startTimeInput').value = state.startTime;
+      // Clear manual anchors so everything flows from now
+      Object.keys(state.items).forEach(k => {
+        state.items[k].anchorStartMins = null;
+      });
+      saveState();
+      renderAll();
+    }
+
+    function anchorLoadToNow(id, baseStartMins) {
+      const it = ensureItem(id);
+      const now = new Date();
+      let nowMins = now.getHours() * 60 + now.getMinutes();
+      if (nowMins < baseStartMins - 360) {
+        nowMins += 1440; // Past midnight relative to start
+      }
+      it.anchorStartMins = nowMins;
+      saveState();
+      renderAll();
+    }
+
+    function setCustomDuration(id, val) {
+      const it = ensureItem(id);
+      it.customDurMins = val === 'default' ? null : parseInt(val, 10);
+      saveState();
+      renderAll();
+    }
+
+    function toggleCheck(id) {
+      const it = ensureItem(id);
+      it.checked = !it.checked;
+      // Note: unchecking a draft item does NOT subtract from verified lifetime,
+      // unless it was already verified, in which case we keep verified locked unless reset.
+      saveState();
+      renderAll();
+    }
+
+    function verifySingleLoad(id, type) {
+      const it = ensureItem(id);
+      if (!it.checked || it.verified) return;
+      it.verified = true;
+      if (type === 'laundry') state.lifetimeLaundry += 1;
+      if (type === 'dishes') state.lifetimeDishes += 1;
+      saveState();
+      renderAll();
+    }
+
+    function verifyAllChecked() {
+      const activeList = buildSchedule();
+      activeList.forEach(task => {
+        const it = ensureItem(task.id);
+        if (it.checked && !it.verified) {
+          it.verified = true;
+          if (task.type === 'laundry') state.lifetimeLaundry += 1;
+          if (task.type === 'dishes') state.lifetimeDishes += 1;
+        }
+      });
+      saveState();
+      renderAll();
+    }
+
+    function adjustLifetime(type, delta) {
+      if (type === 'laundry') {
+        state.lifetimeLaundry = Math.max(0, state.lifetimeLaundry + delta);
+      } else {
+        state.lifetimeDishes = Math.max(0, state.lifetimeDishes + delta);
+      }
+      saveState();
+      renderAll();
+    }
+
+    function toggleBoard() {
+      state.boardDone = document.getElementById('boardCheck').checked;
+      saveState();
+      renderAll();
+    }
+
+    function resetDailySession() {
+      Object.keys(state.items).forEach(k => {
+        state.items[k] = {
+          checked: false,
+          verified: false,
+          customDurMins: null,
+          anchorStartMins: null
+        };
+      });
+      state.boardDone = false;
+      document.getElementById('boardCheck').checked = false;
+      saveState();
+      renderAll();
+    }
+
+    function buildSchedule() {
+      const baseStart = timeStrToMins(state.startTime);
+      const cutoffMins = getCutoffTimelineMins(baseStart, state.cutoffTime);
+      const tasks = [];
+
+      if (state.queueMode === 'sequential') {
+        let cursor = baseStart;
+        for (let i = 1; i <= state.laundryCount; i++) {
+          const id = `L${i}`;
+          const it = ensureItem(id);
+          if (it.anchorStartMins !== null) cursor = it.anchorStartMins;
+          const dur = it.customDurMins || state.defaultDurMins;
+          const end = cursor + dur;
+          tasks.push({
+            id,
+            type: 'laundry',
+            title: `👕 Laundry Load ${i} Complete`,
+            startMins: cursor,
+            endMins: end,
+            durMins: dur,
+            overMins: Math.max(0, end - cutoffMins)
+          });
+          cursor = end + state.bufferMins;
+        }
+        for (let j = 1; j <= state.dishCount; j++) {
+          const id = `D${j}`;
+          const it = ensureItem(id);
+          if (it.anchorStartMins !== null) cursor = it.anchorStartMins;
+          const dur = it.customDurMins || state.defaultDurMins;
+          const end = cursor + dur;
+          tasks.push({
+            id,
+            type: 'dishes',
+            title: `🍽️ Dish Load ${j} Complete`,
+            startMins: cursor,
+            endMins: end,
+            durMins: dur,
+            overMins: Math.max(0, end - cutoffMins)
+          });
+          cursor = end + state.bufferMins;
+        }
+      } else {
+        // Parallel tracks
+        let lCursor = baseStart;
+        for (let i = 1; i <= state.laundryCount; i++) {
+          const id = `L${i}`;
+          const it = ensureItem(id);
+          if (it.anchorStartMins !== null) lCursor = it.anchorStartMins;
+          const dur = it.customDurMins || state.defaultDurMins;
+          const end = lCursor + dur;
+          tasks.push({
+            id,
+            type: 'laundry',
+            title: `👕 Laundry Load ${i} Complete`,
+            startMins: lCursor,
+            endMins: end,
+            durMins: dur,
+            overMins: Math.max(0, end - cutoffMins)
+          });
+          lCursor = end + state.bufferMins;
+        }
+
+        let dCursor = baseStart;
+        for (let j = 1; j <= state.dishCount; j++) {
+          const id = `D${j}`;
+          const it = ensureItem(id);
+          if (it.anchorStartMins !== null) dCursor = it.anchorStartMins;
+          const dur = it.customDurMins || state.defaultDurMins;
+          const end = dCursor + dur;
+          tasks.push({
+            id,
+            type: 'dishes',
+            title: `🍽️ Dish Load ${j} Complete`,
+            startMins: dCursor,
+            endMins: end,
+            durMins: dur,
+            overMins: Math.max(0, end - cutoffMins)
+          });
+          dCursor = end + state.bufferMins;
+        }
+      }
+      return tasks;
+    }
+
+    function renderAll() {
+      document.getElementById('laundryCountVal').textContent = state.laundryCount;
+      document.getElementById('dishCountVal').textContent = state.dishCount;
+      document.getElementById('lifeLaundry').textContent = state.lifetimeLaundry;
+      document.getElementById('lifeDishes').textContent = state.lifetimeDishes;
+
+      document.getElementById('modeSeq').classList.toggle('active', state.queueMode === 'sequential');
+      document.getElementById('modePar').classList.toggle('active', state.queueMode === 'parallel');
+
+      const baseStart = timeStrToMins(state.startTime);
+      const tasks = buildSchedule();
+      const listEl = document.getElementById('questList');
+      listEl.innerHTML = '';
+
+      let overCount = 0;
+      let maxOverMins = 0;
+      let unverifiedCheckedCount = 0;
+      let earnedXP = state.boardDone ? 50 : 0;
+
+      tasks.forEach(t => {
+        const it = ensureItem(t.id);
+        if (it.checked) earnedXP += 100;
+        if (it.verified) earnedXP += 25; // Verification bonus XP
+        if (it.checked && !it.verified) unverifiedCheckedCount++;
+
+        if (t.overMins > 0) {
+          overCount++;
+          if (t.overMins > maxOverMins) maxOverMins = t.overMins;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'quest-card';
+        if (it.verified) card.classList.add('done-verified');
+        else if (it.checked) card.classList.add('done-draft');
+        else if (t.overMins > 0) card.classList.add('past-cutoff');
+
+        const overBadge = t.overMins > 0
+          ? `<span class="cutoff-tag">⚠️ +${t.overMins}m Past Cutoff</span>`
+          : '';
+
+        const verifyControl = it.verified
+          ? `<span class="verified-stamp">🛡️ Verified (+25 XP)</span>`
+          : (it.checked
+              ? `<button class="chip-btn verify-chip" onclick="verifySingleLoad('${t.id}', '${t.type}')">🔒 Verify Real Load</button>`
+              : '');
+
+        const selectedDur = it.customDurMins ? String(it.customDurMins) : 'default';
+
+        card.innerHTML = `
+          <div class="quest-top">
+            <label class="check-label">
+              <input type="checkbox" ${it.checked ? 'checked' : ''} onchange="toggleCheck('${t.id}')" />
+              <span class="quest-name">${t.title}</span>
+            </label>
+            <span class="xp-pill">+100 XP</span>
+          </div>
+          <div class="quest-meta">
+            <div>
+              <span class="time-window">🕒 ${minsToTimeStr(t.startMins)} – ${minsToTimeStr(t.endMins)}</span>
+              ${overBadge}
+            </div>
+            <div class="card-actions">
+              <button class="chip-btn start-now" onclick="anchorLoadToNow('${t.id}', ${baseStart})" title="Snap this load's start time to current clock">
+                ▶ Start Now
+              </button>
+              <select class="dur-select" onchange="setCustomDuration('${t.id}', this.value)" title="Override machine cycle duration">
+                <option value="default" ${selectedDur === 'default' ? 'selected' : ''}>${state.defaultDurMins}m (Default)</option>
+                <option value="60" ${selectedDur === '60' ? 'selected' : ''}>1h 00m (Quick)</option>
+                <option value="90" ${selectedDur === '90' ? 'selected' : ''}>1h 30m</option>
+                <option value="120" ${selectedDur === '120' ? 'selected' : ''}>2h 00m</option>
+                <option value="150" ${selectedDur === '150' ? 'selected' : ''}>2h 30m</option>
+                <option value="180" ${selectedDur === '180' ? 'selected' : ''}>3h 00m</option>
+                <option value="210" ${selectedDur === '210' ? 'selected' : ''}>3h 30m</option>
+                <option value="240" ${selectedDur === '240' ? 'selected' : ''}>4h 00m</option>
+              </select>
+              ${verifyControl}
+            </div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      // Cutoff Banner
+      const banner = document.getElementById('cutoffBanner');
+      if (overCount > 0) {
+        banner.style.display = 'block';
+        const hrs = Math.floor(maxOverMins / 60);
+        const mins = maxOverMins % 60;
+        const durText = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        banner.textContent = `⚠️ Schedule Alert: ${overCount} load(s) exceed your ${minsToTimeStr(timeStrToMins(state.cutoffTime))} cutoff by up to ${durText}. Reduce loads, shorten cycle times, or switch to Parallel mode.`;
+      } else {
+        banner.style.display = 'none';
+      }
+
+      // Commit All Verified Button
+      const commitBtn = document.getElementById('commitAllBtn');
+      if (unverifiedCheckedCount > 0) {
+        commitBtn.disabled = false;
+        commitBtn.textContent = `🔒 Verify & Lock ${unverifiedCheckedCount} Checked Load(s) into Lifetime Total`;
+      } else {
+        commitBtn.disabled = true;
+        commitBtn.textContent = `✓ All Checked Loads Verified in Lifetime Vault`;
+      }
+
+      // Board style
+      const boardCard = document.getElementById('boardCard');
+      boardCard.classList.toggle('done-verified', !!state.boardDone);
+
+      // XP & Level Calculation (Add lifetime XP base so progress feels permanent)
+      const lifetimeXP = (state.lifetimeLaundry + state.lifetimeDishes) * 125;
+      const totalXP = lifetimeXP + earnedXP;
+      const level = Math.floor(totalXP / 500) + 1;
+      const xpIntoLevel = totalXP % 500;
+      const pct = Math.min(100, Math.round((xpIntoLevel / 500) * 100));
+
+      const ranks = [
+        'Initiate Operator',
+        'Cycle Tactician',
+        'Thermal Specialist',
+        'Hydro Commander',
+        'Master of the Fold',
+        'Apex Appliance Lord'
+      ];
+      const rankName = ranks[Math.min(ranks.length - 1, level - 1)];
+
+      document.getElementById('lvlBadge').textContent = `LVL ${level}`;
+      document.getElementById('rankText').textContent = `Rank: ${rankName}`;
+      document.getElementById('xpText').textContent = `${xpIntoLevel} / 500 XP (Total: ${totalXP})`;
+      document.getElementById('xpFill').style.width = `${pct}%`;
+    }
+
+    loadState();
+  </script>
+</body>
+</html>
