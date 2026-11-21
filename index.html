@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Quest" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Laundry & Dish Quest v2.0</title>
+  <title>Laundry & Dish Quest v2.1</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><rect x='14' y='14' width='72' height='72' rx='12' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='50' cy='54' r='22' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='30' cy='26' r='4' fill='%2310b981'/><circle cx='42' cy='26' r='4' fill='%2338bdf8'/></svg>" />
   <style>
     :root {
@@ -508,6 +511,39 @@
       font-size: 0.82rem;
       cursor: pointer;
     }
+
+    .backup-card {
+      margin-top: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .backup-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .backup-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .backup-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .backup-btn {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -515,7 +551,7 @@
   <!-- Header & XP -->
   <div class="header-card">
     <div class="title-row">
-      <h1>⚡ QUEST TRACKER v2.0</h1>
+      <h1>⚡ QUEST TRACKER v2.1</h1>
       <span class="lvl-badge" id="lvlBadge">LVL 1</span>
     </div>
     <div class="xp-meta">
@@ -638,13 +674,26 @@
   </div>
 
   <div class="footer-actions">
-    <button class="reset-btn" onclick="resetDailySession()">🔄 New Day (Keep Lifetime Totals)</button>
+    <button class="reset-btn" type="button" onclick="resetDailySession()">🔄 New Day (Keep Lifetime Totals)</button>
+  </div>
+
+  <div class="backup-card">
+    <div class="backup-title">💾 Backup</div>
+    <p class="backup-hint">Download a copy of your progress, or restore one from a file. Progress stays in this browser unless you export it.</p>
+    <div class="backup-actions">
+      <button class="reset-btn backup-btn" type="button" onclick="exportBackup()">⬇️ Export backup</button>
+      <button class="reset-btn backup-btn" type="button" onclick="document.getElementById('importFileInput').click()">⬆️ Import backup</button>
+    </div>
+    <input id="importFileInput" type="file" accept="application/json,.json" hidden onchange="importBackup(event)" />
   </div>
 
   <script>
     const STORAGE_KEY = 'laundry_dish_quest_v2';
+    const APP_STORAGE_KEYS = [STORAGE_KEY];
+    const BACKUP_APP = 'laundry-dish-quest';
+    const APP_VERSION = '2.1';
 
-    let state = {
+    const DEFAULT_STATE = {
       startTime: '10:30',
       cutoffTime: '02:00',
       bufferMins: 10,
@@ -659,8 +708,15 @@
       items: {}
     };
 
+    function freshState() {
+      return { ...DEFAULT_STATE, items: {} };
+    }
+
+    let state = freshState();
+
     function loadState() {
       const saved = localStorage.getItem(STORAGE_KEY);
+      state = freshState();
       if (saved) {
         try {
           state = { ...state, ...JSON.parse(saved) };
@@ -1049,7 +1105,139 @@
       document.getElementById('xpFill').style.width = `${pct}%`;
     }
 
+    function localDateStamp() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function buildBackupPayload() {
+      saveState();
+      const keys = {};
+      APP_STORAGE_KEYS.forEach((key) => {
+        const raw = localStorage.getItem(key);
+        if (raw === null) {
+          keys[key] = null;
+          return;
+        }
+        try {
+          keys[key] = JSON.parse(raw);
+        } catch (e) {
+          keys[key] = raw;
+        }
+      });
+      return {
+        app: BACKUP_APP,
+        version: APP_VERSION,
+        timestamp: new Date().toISOString(),
+        keys
+      };
+    }
+
+    function exportBackup() {
+      const payload = buildBackupPayload();
+      const filename = `laundry-dish-quest-backup-${localDateStamp()}.json`;
+      const text = JSON.stringify(payload, null, 2);
+      // octet-stream helps Android Chrome download instead of opening the JSON.
+      const blob = new Blob([text], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function extractBackupKeys(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+      const bag = data.keys || data.storage || data.localStorage;
+      if (bag && typeof bag === 'object' && !Array.isArray(bag) && Object.prototype.hasOwnProperty.call(bag, STORAGE_KEY)) {
+        return bag;
+      }
+      return null;
+    }
+
+    function normalizeStoredValue(value) {
+      if (value == null) return null;
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value);
+        } catch (e) {
+          return null;
+        }
+      }
+      if (typeof value === 'object' && !Array.isArray(value)) return value;
+      return null;
+    }
+
+    function importBackup(event) {
+      const input = event.target;
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onerror = function () {
+        alert('Could not read that file.');
+      };
+      reader.onload = function () {
+        let data;
+        try {
+          data = JSON.parse(reader.result);
+        } catch (e) {
+          alert('That file is not valid JSON.');
+          return;
+        }
+
+        const bag = extractBackupKeys(data);
+        if (!bag) {
+          alert('That file is not a Laundry & Dish Quest backup.');
+          return;
+        }
+
+        const restored = normalizeStoredValue(bag[STORAGE_KEY]);
+        if (!restored) {
+          alert('That backup is missing quest progress data.');
+          return;
+        }
+
+        const when = data.timestamp || data.exportedAt || file.name;
+        const message = 'This will overwrite your current Quest Tracker progress with the backup' +
+          (when ? ' from ' + when : '') +
+          '. Continue?';
+        if (!confirm(message)) return;
+
+        try {
+          APP_STORAGE_KEYS.forEach((key) => {
+            if (!Object.prototype.hasOwnProperty.call(bag, key)) return;
+            const value = key === STORAGE_KEY ? restored : normalizeStoredValue(bag[key]);
+            if (value == null) return;
+            localStorage.setItem(key, JSON.stringify(value));
+          });
+        } catch (e) {
+          alert('Could not save the backup to this browser.');
+          return;
+        }
+
+        loadState();
+        alert('Backup restored.');
+      };
+      reader.readAsText(file);
+    }
+
     loadState();
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    }
   </script>
 </body>
 </html>
