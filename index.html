@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Quest" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Laundry & Dish Quest v2.1.1</title>
+  <title>Laundry & Dish Quest v2.2</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><rect x='14' y='14' width='72' height='72' rx='12' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='50' cy='54' r='22' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='30' cy='26' r='4' fill='%2310b981'/><circle cx='42' cy='26' r='4' fill='%2338bdf8'/></svg>" />
@@ -469,6 +469,81 @@
       color: var(--accent);
     }
 
+    .chip-btn.start-now.is-started {
+      background: var(--accent-glow);
+      font-weight: 800;
+    }
+
+    .quest-card.is-running {
+      border-color: var(--accent);
+      background: linear-gradient(145deg, #123047, #151f32);
+      box-shadow: 0 0 0 1px var(--accent-glow), 0 8px 20px rgba(56, 189, 248, 0.16);
+    }
+
+    .quest-card.is-due {
+      border-color: var(--amber);
+      background: linear-gradient(145deg, #2a2110, #151f32);
+    }
+
+    .running-badge {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 7px 11px;
+      border-radius: 999px;
+      letter-spacing: 0.1px;
+    }
+
+    .quest-card.is-due .running-badge {
+      border-color: var(--amber);
+      background: var(--amber-bg);
+      color: #fcd34d;
+    }
+
+    .cycle-alert {
+      display: none;
+      background: var(--amber-bg);
+      border: 1px solid var(--amber);
+      color: #fde68a;
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .cycle-alert-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .cycle-alert button {
+      flex-shrink: 0;
+      background: var(--card-alt);
+      border: 1px solid var(--amber);
+      color: #fcd34d;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .notif-hint {
+      margin-top: 10px;
+      font-size: 0.74rem;
+      color: var(--muted);
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
     .chip-btn.verify-chip {
       border-color: var(--amber);
       background: rgba(245, 158, 11, 0.2);
@@ -551,7 +626,7 @@
   <!-- Header & XP -->
   <div class="header-card">
     <div class="title-row">
-      <h1>⚡ QUEST TRACKER v2.1.1</h1>
+      <h1>⚡ QUEST TRACKER v2.2</h1>
       <span class="lvl-badge" id="lvlBadge">LVL 1</span>
     </div>
     <div class="xp-meta">
@@ -651,6 +726,13 @@
   <!-- Cutoff Warning Banner -->
   <div class="cutoff-banner" id="cutoffBanner"></div>
 
+  <div class="cycle-alert" id="cycleAlert" role="alert">
+    <div class="cycle-alert-row">
+      <div id="cycleAlertText"></div>
+      <button type="button" onclick="dismissCycleAlert()">OK</button>
+    </div>
+  </div>
+
   <!-- Dynamic Queue Section -->
   <div class="section-header">
     <span class="section-title">📅 TODAY'S ACTIVE QUEUE</span>
@@ -658,6 +740,7 @@
   </div>
 
   <div class="quest-list" id="questList"></div>
+  <p class="notif-hint" id="notifHint">When you tap Start Load, this app can ping you when that cycle should end. Pings work best if you leave the app open or switch apps without fully closing Chrome. If you swipe Chrome away, the ping often will not fire until you open the app again — then you'll get an on-screen alert, sound, and vibration.</p>
 
   <div class="footer-actions">
     <button class="reset-btn" type="button" onclick="resetDailySession()">🔄 New Day (Keep Lifetime Totals)</button>
@@ -677,7 +760,7 @@
     const STORAGE_KEY = 'laundry_dish_quest_v2';
     const APP_STORAGE_KEYS = [STORAGE_KEY];
     const BACKUP_APP = 'laundry-dish-quest';
-    const APP_VERSION = '2.1.1';
+    const APP_VERSION = '2.2';
 
     const DEFAULT_STATE = {
       startTime: '10:30',
@@ -718,6 +801,7 @@
       delete state.boardDone;
       if (hadBoardFlag) saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
     function saveState() {
@@ -765,6 +849,7 @@
       state.defaultDurMins = Math.max(15, parseInt(document.getElementById('defaultDurInput').value) || 180);
       saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
     function setQueueMode(mode) {
@@ -789,15 +874,18 @@
       const mm = String(now.getMinutes()).padStart(2, '0');
       state.startTime = `${hh}:${mm}`;
       document.getElementById('startTimeInput').value = state.startTime;
-      // Clear manual anchors so everything flows from now
+      // Clear anchors on unstarted loads so the rest of the queue flows from now.
+      // Keep started/running loads anchored so their RUNNING badge and times stay put.
       Object.keys(state.items).forEach(k => {
+        if (itemIsStarted(state.items[k])) return;
         state.items[k].anchorStartMins = null;
       });
       saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
-    function anchorLoadToNow(id, baseStartMins) {
+    async function anchorLoadToNow(id, baseStartMins) {
       const it = ensureItem(id);
       const now = new Date();
       let nowMins = now.getHours() * 60 + now.getMinutes();
@@ -805,8 +893,15 @@
         nowMins += 1440; // Past midnight relative to start
       }
       it.anchorStartMins = nowMins;
+      it.running = true;
+      it.startedAtMs = Date.now();
+      it.endNotified = false;
       saveState();
       renderAll();
+      try {
+        await requestNotifPermissionIfNeeded();
+      } catch (e) {}
+      syncLoadAlarms();
     }
 
     function setCustomDuration(id, val) {
@@ -814,15 +909,31 @@
       it.customDurMins = val === 'default' ? null : parseInt(val, 10);
       saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
     function toggleCheck(id) {
       const it = ensureItem(id);
+      if (it.checked) {
+        const msg = it.verified
+          ? 'This load is already verified. Uncheck it anyway? Lifetime totals stay the same.'
+          : 'This load is marked finished. Uncheck it anyway?';
+        if (!confirm(msg)) {
+          renderAll();
+          return;
+        }
+      }
       it.checked = !it.checked;
       // Note: unchecking a draft item does NOT subtract from verified lifetime,
       // unless it was already verified, in which case we keep verified locked unless reset.
+      if (it.checked) {
+        // Finished early: don't ping when the original end time arrives.
+        it.endNotified = true;
+        clearEndAlarm(id);
+      }
       saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
     function verifySingleLoad(id, type) {
@@ -860,7 +971,11 @@
     }
 
     function resetDailySession() {
+      if (!confirm('Start a new day? This clears today\'s checks, running badges, and start times, but keeps your lifetime totals.')) {
+        return;
+      }
       Object.keys(state.items).forEach(k => {
+        clearEndAlarm(k);
         state.items[k] = {
           checked: false,
           verified: false,
@@ -869,8 +984,10 @@
         };
       });
       delete state.boardDone;
+      dismissCycleAlert();
       saveState();
       renderAll();
+      syncLoadAlarms();
     }
 
     function buildSchedule() {
@@ -989,9 +1106,15 @@
 
         const card = document.createElement('div');
         card.className = 'quest-card';
+        card.dataset.questId = t.id;
+        const started = itemIsStarted(it);
+        const endMs = started ? expectedEndMsForItem(it, t) : null;
+        const isDue = started && !it.checked && endMs !== null && endMs <= Date.now();
+        if (started && !it.checked && isDue) card.classList.add('is-due');
+        else if (started && !it.checked) card.classList.add('is-running');
         if (it.verified) card.classList.add('done-verified');
         else if (it.checked) card.classList.add('done-draft');
-        else if (t.overMins > 0) card.classList.add('past-cutoff');
+        else if (t.overMins > 0 && !started) card.classList.add('past-cutoff');
 
         const overBadge = t.overMins > 0
           ? `<span class="cutoff-tag">⚠️ +${t.overMins}m Past Cutoff</span>`
@@ -1005,6 +1128,16 @@
 
         const selectedDur = it.customDurMins ? String(it.customDurMins) : 'default';
 
+        const startLabel = started
+          ? (typeof it.startedAtMs === 'number' ? formatClockMs(it.startedAtMs) : minsToTimeStr(t.startMins))
+          : '';
+        const doneLabel = started
+          ? (endMs !== null ? formatClockMs(endMs) : minsToTimeStr(t.endMins))
+          : '';
+        const runningBadge = started
+          ? `<div class="running-badge" data-running-badge="${t.id}">${isDue ? 'DUE' : 'RUNNING'} — started ${startLabel}, ${isDue ? 'was due ' + doneLabel : 'done ~' + doneLabel}</div>`
+          : '';
+
         card.innerHTML = `
           <div class="quest-top">
             <label class="check-label">
@@ -1013,14 +1146,15 @@
             </label>
             <span class="xp-pill">+100 XP</span>
           </div>
+          ${runningBadge}
           <div class="quest-meta">
             <div>
               <span class="time-window">🕒 ${minsToTimeStr(t.startMins)} – ${minsToTimeStr(t.endMins)}</span>
               ${overBadge}
             </div>
             <div class="card-actions">
-              <button class="chip-btn start-now" onclick="anchorLoadToNow('${t.id}', ${baseStart})" title="Snap this load's start time to current clock">
-                ▶ Start Now
+              <button class="chip-btn start-now${started ? ' is-started' : ''}" onclick="anchorLoadToNow('${t.id}', ${baseStart})" title="Snap this load's start time to current clock">
+                ${started ? '▶ Restart Load' : '▶ Start Load'}
               </button>
               <select class="dur-select" onchange="setCustomDuration('${t.id}', this.value)" title="Override machine cycle duration">
                 <option value="default" ${selectedDur === 'default' ? 'selected' : ''}>${state.defaultDurMins}m (Default)</option>
@@ -1210,13 +1344,230 @@
       reader.readAsText(file);
     }
 
+    const endTimers = new Map();
+    const dueAlertIds = new Set();
+
+    function itemIsStarted(it) {
+      if (!it) return false;
+      if (it.running === true) return true;
+      if (typeof it.startedAtMs === 'number' && it.startedAtMs > 0) return true;
+      return it.anchorStartMins !== null && it.anchorStartMins !== undefined;
+    }
+
+    function formatClockMs(ms) {
+      const d = new Date(ms);
+      return minsToTimeStr(d.getHours() * 60 + d.getMinutes());
+    }
+
+    function expectedEndMsForItem(it, task) {
+      const durMins = (it && it.customDurMins) || (task && task.durMins) || state.defaultDurMins;
+      if (it && typeof it.startedAtMs === 'number' && it.startedAtMs > 0) {
+        return it.startedAtMs + durMins * 60 * 1000;
+      }
+      if (task) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        let endMs = startOfToday + (((task.endMins % 1440) + 1440) % 1440) * 60 * 1000;
+        if (task.endMins >= 1440) {
+          endMs = startOfToday + (task.endMins - 1440) * 60 * 1000 + 86400000;
+        } else if (task.startMins > task.endMins) {
+          endMs += 86400000;
+        }
+        return endMs;
+      }
+      return null;
+    }
+
+    function supportsTimestampTrigger() {
+      return typeof TimestampTrigger === 'function';
+    }
+
+    async function requestNotifPermissionIfNeeded() {
+      if (!('Notification' in window)) return 'unsupported';
+      if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+        return Notification.permission;
+      }
+      try {
+        return await Notification.requestPermission();
+      } catch (e) {
+        return Notification.permission;
+      }
+    }
+
+    function postToServiceWorker(message) {
+      if (!('serviceWorker' in navigator)) return Promise.resolve();
+      return navigator.serviceWorker.ready.then(function (reg) {
+        const worker = reg.active || navigator.serviceWorker.controller;
+        if (worker) worker.postMessage(message);
+        return reg;
+      }).catch(function () { return null; });
+    }
+
+    function clearEndAlarm(id) {
+      if (endTimers.has(id)) {
+        clearTimeout(endTimers.get(id));
+        endTimers.delete(id);
+      }
+      postToServiceWorker({ type: 'cancel-load-end', id: id });
+    }
+
+    function scheduleEndAlarm(id, title, endMs) {
+      clearEndAlarm(id);
+      const delay = endMs - Date.now();
+      if (delay <= 0) {
+        fireLoadEnded(id, title);
+        return;
+      }
+      const tid = setTimeout(function () {
+        fireLoadEnded(id, title);
+      }, delay);
+      endTimers.set(id, tid);
+      postToServiceWorker({
+        type: 'schedule-load-end',
+        id: id,
+        title: title,
+        body: title + ' should be done now.',
+        when: endMs
+      });
+    }
+
+    function playAlertSound() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!playAlertSound.ctx) playAlertSound.ctx = new Ctx();
+        const ctx = playAlertSound.ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(660, now + 0.16);
+        osc.frequency.setValueAtTime(990, now + 0.32);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.72);
+      } catch (e) {}
+    }
+
+    function showCycleAlert(message) {
+      const box = document.getElementById('cycleAlert');
+      const textEl = document.getElementById('cycleAlertText');
+      if (!box || !textEl) return;
+      textEl.textContent = message;
+      box.style.display = 'block';
+    }
+
+    function dismissCycleAlert() {
+      dueAlertIds.clear();
+      const box = document.getElementById('cycleAlert');
+      if (box) box.style.display = 'none';
+    }
+
+    async function showEndNotification(id, title) {
+      const body = title + ' should be done now.';
+      const opts = {
+        body: body,
+        tag: 'load-end-' + id,
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        data: { id: id, url: './' },
+        renotify: true,
+        vibrate: [200, 80, 200]
+      };
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          if (registration && typeof registration.showNotification === 'function') {
+            await registration.showNotification('Load finished', opts);
+            return 'sw';
+          }
+        }
+      } catch (e) {}
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Load finished', opts);
+          return 'page';
+        }
+      } catch (e) {}
+      return 'none';
+    }
+
+    function fireLoadEnded(id, title) {
+      const it = state.items[id];
+      if (!it || !itemIsStarted(it) || it.endNotified) return;
+      if (it.checked) {
+        it.endNotified = true;
+        clearEndAlarm(id);
+        saveState();
+        return;
+      }
+      it.endNotified = true;
+      clearEndAlarm(id);
+      saveState();
+      dueAlertIds.add(title);
+      const names = Array.from(dueAlertIds).join(' · ');
+      showCycleAlert(names + (dueAlertIds.size > 1 ? ' should be done now.' : ' should be done now.'));
+      playAlertSound();
+      try {
+        if (navigator.vibrate) navigator.vibrate([200, 80, 200, 80, 400]);
+      } catch (e) {}
+      showEndNotification(id, title);
+      renderAll();
+    }
+
+    function syncLoadAlarms() {
+      const tasks = buildSchedule();
+      const byId = {};
+      tasks.forEach(function (t) { byId[t.id] = t; });
+      const keep = new Set();
+      Object.keys(state.items || {}).forEach(function (id) {
+        const it = state.items[id];
+        const task = byId[id];
+        if (!itemIsStarted(it) || it.checked || it.endNotified) {
+          clearEndAlarm(id);
+          return;
+        }
+        const endMs = expectedEndMsForItem(it, task);
+        if (!endMs) return;
+        keep.add(id);
+        const title = task ? task.title : ('Load ' + id);
+        if (endMs <= Date.now()) {
+          fireLoadEnded(id, title);
+        } else {
+          scheduleEndAlarm(id, title, endMs);
+        }
+      });
+      endTimers.forEach(function (_tid, id) {
+        if (!keep.has(id)) clearEndAlarm(id);
+      });
+    }
+
     loadState();
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function () {});
+        navigator.serviceWorker.register('./sw.js').then(function () {
+          syncLoadAlarms();
+        }).catch(function () {});
+      });
+      navigator.serviceWorker.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'notification-clicked') {
+          syncLoadAlarms();
+        }
       });
     }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') syncLoadAlarms();
+    });
+    window.addEventListener('focus', function () { syncLoadAlarms(); });
+    window.addEventListener('pageshow', function () { syncLoadAlarms(); });
   </script>
 </body>
 </html>
