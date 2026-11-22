@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laundry-dish-quest-v2.1';
+const CACHE_NAME = 'laundry-dish-quest-v2.1.1';
 const PRECACHE_URLS = [
   './',
   './index.html',

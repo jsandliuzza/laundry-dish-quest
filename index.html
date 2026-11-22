@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Quest" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Laundry & Dish Quest v2.1</title>
+  <title>Laundry & Dish Quest v2.1.1</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><rect x='14' y='14' width='72' height='72' rx='12' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='50' cy='54' r='22' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='30' cy='26' r='4' fill='%2310b981'/><circle cx='42' cy='26' r='4' fill='%2338bdf8'/></svg>" />
@@ -551,7 +551,7 @@
   <!-- Header & XP -->
   <div class="header-card">
     <div class="title-row">
-      <h1>⚡ QUEST TRACKER v2.1</h1>
+      <h1>⚡ QUEST TRACKER v2.1.1</h1>
       <span class="lvl-badge" id="lvlBadge">LVL 1</span>
     </div>
     <div class="xp-meta">
@@ -659,20 +659,6 @@
 
   <div class="quest-list" id="questList"></div>
 
-  <!-- Bonus Quests -->
-  <div class="section-header">
-    <span class="section-title">🪵 BONUS CARE</span>
-  </div>
-  <div class="quest-card" id="boardCard">
-    <div class="quest-top">
-      <label class="check-label">
-        <input type="checkbox" id="boardCheck" onchange="toggleBoard()" />
-        <span class="quest-name">Hand-Wash Wooden Cutting Board</span>
-      </label>
-      <span class="xp-pill">+50 XP</span>
-    </div>
-  </div>
-
   <div class="footer-actions">
     <button class="reset-btn" type="button" onclick="resetDailySession()">🔄 New Day (Keep Lifetime Totals)</button>
   </div>
@@ -691,7 +677,7 @@
     const STORAGE_KEY = 'laundry_dish_quest_v2';
     const APP_STORAGE_KEYS = [STORAGE_KEY];
     const BACKUP_APP = 'laundry-dish-quest';
-    const APP_VERSION = '2.1';
+    const APP_VERSION = '2.1.1';
 
     const DEFAULT_STATE = {
       startTime: '10:30',
@@ -701,7 +687,6 @@
       queueMode: 'sequential', // 'sequential' or 'parallel'
       laundryCount: 5,
       dishCount: 1,
-      boardDone: false,
       lifetimeLaundry: 0,
       lifetimeDishes: 0,
       // Per-item overrides & status keyed by id ('L1', 'D1', etc.)
@@ -717,16 +702,21 @@
     function loadState() {
       const saved = localStorage.getItem(STORAGE_KEY);
       state = freshState();
+      let hadBoardFlag = false;
       if (saved) {
         try {
-          state = { ...state, ...JSON.parse(saved) };
+          const parsed = JSON.parse(saved);
+          hadBoardFlag = !!(parsed && Object.prototype.hasOwnProperty.call(parsed, 'boardDone'));
+          state = { ...state, ...parsed };
         } catch (e) {}
       }
       document.getElementById('startTimeInput').value = state.startTime;
       document.getElementById('cutoffTimeInput').value = state.cutoffTime;
       document.getElementById('bufferInput').value = state.bufferMins;
       document.getElementById('defaultDurInput').value = state.defaultDurMins;
-      document.getElementById('boardCheck').checked = !!state.boardDone;
+      // Cutting-board bonus was removed; ignore leftover saved flags.
+      delete state.boardDone;
+      if (hadBoardFlag) saveState();
       renderAll();
     }
 
@@ -869,12 +859,6 @@
       renderAll();
     }
 
-    function toggleBoard() {
-      state.boardDone = document.getElementById('boardCheck').checked;
-      saveState();
-      renderAll();
-    }
-
     function resetDailySession() {
       Object.keys(state.items).forEach(k => {
         state.items[k] = {
@@ -884,8 +868,7 @@
           anchorStartMins: null
         };
       });
-      state.boardDone = false;
-      document.getElementById('boardCheck').checked = false;
+      delete state.boardDone;
       saveState();
       renderAll();
     }
@@ -991,7 +974,7 @@
       let overCount = 0;
       let maxOverMins = 0;
       let unverifiedCheckedCount = 0;
-      let earnedXP = state.boardDone ? 50 : 0;
+      let earnedXP = 0;
 
       tasks.forEach(t => {
         const it = ensureItem(t.id);
@@ -1077,10 +1060,6 @@
         commitBtn.disabled = true;
         commitBtn.textContent = `✓ All Checked Loads Verified in Lifetime Vault`;
       }
-
-      // Board style
-      const boardCard = document.getElementById('boardCard');
-      boardCard.classList.toggle('done-verified', !!state.boardDone);
 
       // XP & Level Calculation (Add lifetime XP base so progress feels permanent)
       const lifetimeXP = (state.lifetimeLaundry + state.lifetimeDishes) * 125;
