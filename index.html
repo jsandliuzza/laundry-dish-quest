@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Quest" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Laundry & Dish Quest v2.2</title>
+  <title>Laundry & Dish Quest v2.3</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><rect x='14' y='14' width='72' height='72' rx='12' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='50' cy='54' r='22' fill='none' stroke='%2338bdf8' stroke-width='6'/><circle cx='30' cy='26' r='4' fill='%2310b981'/><circle cx='42' cy='26' r='4' fill='%2338bdf8'/></svg>" />
@@ -544,6 +544,62 @@
       line-height: 1.45;
     }
 
+    .end-adjust {
+      margin-top: 10px;
+    }
+
+    .end-adjust-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .end-adj-btn {
+      flex: 1;
+      min-height: 48px;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      background: var(--accent-glow);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .quest-card.is-due .end-adj-btn {
+      border-color: var(--amber);
+      background: var(--amber-bg);
+      color: #fde68a;
+    }
+
+    .end-adjust-set {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .end-adjust-set label {
+      flex: 1;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .end-adjust-set input {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      min-height: 44px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
     .chip-btn.verify-chip {
       border-color: var(--amber);
       background: rgba(245, 158, 11, 0.2);
@@ -626,7 +682,7 @@
   <!-- Header & XP -->
   <div class="header-card">
     <div class="title-row">
-      <h1>⚡ QUEST TRACKER v2.2</h1>
+      <h1>⚡ QUEST TRACKER v2.3</h1>
       <span class="lvl-badge" id="lvlBadge">LVL 1</span>
     </div>
     <div class="xp-meta">
@@ -760,7 +816,7 @@
     const STORAGE_KEY = 'laundry_dish_quest_v2';
     const APP_STORAGE_KEYS = [STORAGE_KEY];
     const BACKUP_APP = 'laundry-dish-quest';
-    const APP_VERSION = '2.2';
+    const APP_VERSION = '2.3';
 
     const DEFAULT_STATE = {
       startTime: '10:30',
@@ -896,6 +952,7 @@
       it.running = true;
       it.startedAtMs = Date.now();
       it.endNotified = false;
+      delete it.expectedEndAtMs;
       saveState();
       renderAll();
       try {
@@ -907,6 +964,11 @@
     function setCustomDuration(id, val) {
       const it = ensureItem(id);
       it.customDurMins = val === 'default' ? null : parseInt(val, 10);
+      if (typeof it.startedAtMs === 'number' && it.startedAtMs > 0) {
+        const dur = it.customDurMins || state.defaultDurMins;
+        it.expectedEndAtMs = it.startedAtMs + dur * 60 * 1000;
+        if (it.expectedEndAtMs > Date.now()) it.endNotified = false;
+      }
       saveState();
       renderAll();
       syncLoadAlarms();
@@ -990,6 +1052,15 @@
       syncLoadAlarms();
     }
 
+    function durationMinsForSchedule(it) {
+      const fallback = it.customDurMins || state.defaultDurMins;
+      if (typeof it.expectedEndAtMs === 'number' && it.expectedEndAtMs > 0 &&
+          typeof it.startedAtMs === 'number' && it.startedAtMs > 0) {
+        return Math.max(1, Math.round((it.expectedEndAtMs - it.startedAtMs) / 60000));
+      }
+      return fallback;
+    }
+
     function buildSchedule() {
       const baseStart = timeStrToMins(state.startTime);
       const cutoffMins = getCutoffTimelineMins(baseStart, state.cutoffTime);
@@ -1001,7 +1072,7 @@
           const id = `L${i}`;
           const it = ensureItem(id);
           if (it.anchorStartMins !== null) cursor = it.anchorStartMins;
-          const dur = it.customDurMins || state.defaultDurMins;
+          const dur = durationMinsForSchedule(it);
           const end = cursor + dur;
           tasks.push({
             id,
@@ -1018,7 +1089,7 @@
           const id = `D${j}`;
           const it = ensureItem(id);
           if (it.anchorStartMins !== null) cursor = it.anchorStartMins;
-          const dur = it.customDurMins || state.defaultDurMins;
+          const dur = durationMinsForSchedule(it);
           const end = cursor + dur;
           tasks.push({
             id,
@@ -1038,7 +1109,7 @@
           const id = `L${i}`;
           const it = ensureItem(id);
           if (it.anchorStartMins !== null) lCursor = it.anchorStartMins;
-          const dur = it.customDurMins || state.defaultDurMins;
+          const dur = durationMinsForSchedule(it);
           const end = lCursor + dur;
           tasks.push({
             id,
@@ -1057,7 +1128,7 @@
           const id = `D${j}`;
           const it = ensureItem(id);
           if (it.anchorStartMins !== null) dCursor = it.anchorStartMins;
-          const dur = it.customDurMins || state.defaultDurMins;
+          const dur = durationMinsForSchedule(it);
           const end = dCursor + dur;
           tasks.push({
             id,
@@ -1138,6 +1209,27 @@
           ? `<div class="running-badge" data-running-badge="${t.id}">${isDue ? 'DUE' : 'RUNNING'} — started ${startLabel}, ${isDue ? 'was due ' + doneLabel : 'done ~' + doneLabel}</div>`
           : '';
 
+        const endMsForInput = endMs || Date.now();
+        const endTimeValue = formatTimeInputValue(endMsForInput);
+        const minsLeft = Math.max(0, Math.round((endMsForInput - Date.now()) / 60000));
+        const endAdjust = (started && !it.checked)
+          ? `<div class="end-adjust" data-end-adjust="${t.id}">
+              <div class="end-adjust-btns">
+                <button type="button" class="end-adj-btn" data-adj="-5" onclick="adjustLoadEnd('${t.id}', -5)">−5 min</button>
+                <button type="button" class="end-adj-btn" data-adj="5" onclick="adjustLoadEnd('${t.id}', 5)">+5 min</button>
+                <button type="button" class="end-adj-btn" data-adj="10" onclick="adjustLoadEnd('${t.id}', 10)">+10 min</button>
+              </div>
+              <div class="end-adjust-set">
+                <label>Set end time
+                  <input type="time" data-end-time="${t.id}" value="${endTimeValue}" onchange="setLoadEndTime('${t.id}', this.value)" />
+                </label>
+                <label>Min left
+                  <input type="number" data-mins-left="${t.id}" min="0" max="600" step="1" inputmode="numeric" value="${minsLeft}" onchange="setLoadMinutesRemaining('${t.id}', this.value)" />
+                </label>
+              </div>
+            </div>`
+          : '';
+
         card.innerHTML = `
           <div class="quest-top">
             <label class="check-label">
@@ -1147,6 +1239,7 @@
             <span class="xp-pill">+100 XP</span>
           </div>
           ${runningBadge}
+          ${endAdjust}
           <div class="quest-meta">
             <div>
               <span class="time-window">🕒 ${minsToTimeStr(t.startMins)} – ${minsToTimeStr(t.endMins)}</span>
@@ -1359,7 +1452,59 @@
       return minsToTimeStr(d.getHours() * 60 + d.getMinutes());
     }
 
+    function minAllowedEndMs(it) {
+      if (it && typeof it.startedAtMs === 'number' && it.startedAtMs > 0) {
+        return it.startedAtMs + 60 * 1000;
+      }
+      return Date.now();
+    }
+
+    function applyItemEndMs(id, endMs) {
+      const it = ensureItem(id);
+      if (!itemIsStarted(it)) return;
+      it.expectedEndAtMs = Math.max(minAllowedEndMs(it), endMs);
+      if (it.expectedEndAtMs > Date.now()) {
+        it.endNotified = false;
+      }
+      saveState();
+      renderAll();
+      syncLoadAlarms();
+    }
+
+    function adjustLoadEnd(id, deltaMins) {
+      const it = ensureItem(id);
+      const task = buildSchedule().find(function (t) { return t.id === id; });
+      const current = expectedEndMsForItem(it, task);
+      if (!current) return;
+      applyItemEndMs(id, current + deltaMins * 60 * 1000);
+    }
+
+    function setLoadEndTime(id, hhmm) {
+      if (!hhmm) return;
+      const it = ensureItem(id);
+      const startMs = (typeof it.startedAtMs === 'number' && it.startedAtMs > 0) ? it.startedAtMs : Date.now();
+      const parts = hhmm.split(':').map(Number);
+      const end = new Date(startMs);
+      end.setHours(parts[0], parts[1] || 0, 0, 0);
+      if (end.getTime() <= startMs) end.setDate(end.getDate() + 1);
+      applyItemEndMs(id, end.getTime());
+    }
+
+    function setLoadMinutesRemaining(id, raw) {
+      const mins = parseInt(raw, 10);
+      if (!Number.isFinite(mins) || mins < 0) return;
+      applyItemEndMs(id, Date.now() + mins * 60 * 1000);
+    }
+
+    function formatTimeInputValue(ms) {
+      const d = new Date(ms);
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
     function expectedEndMsForItem(it, task) {
+      if (it && typeof it.expectedEndAtMs === 'number' && it.expectedEndAtMs > 0) {
+        return it.expectedEndAtMs;
+      }
       const durMins = (it && it.customDurMins) || (task && task.durMins) || state.defaultDurMins;
       if (it && typeof it.startedAtMs === 'number' && it.startedAtMs > 0) {
         return it.startedAtMs + durMins * 60 * 1000;
